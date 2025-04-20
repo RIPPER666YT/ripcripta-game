@@ -37,6 +37,7 @@
             padding: 15px;
             border: 1px solid #ff5555;
             border-radius: 5px;
+            position: relative;
         }
         #history {
             color: #ff8888;
@@ -133,6 +134,62 @@
             border-radius: 15px;
             outline: none;
         }
+        #info-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #ff5555;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        #info-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #111;
+            border: 2px solid #ff5555;
+            border-radius: 5px;
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            z-index: 1000;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        #info-modal h2 {
+            color: #ffaa00;
+            margin-top: 0;
+        }
+        #info-modal ul {
+            text-align: left;
+            padding-left: 20px;
+        }
+        #info-modal li {
+            margin-bottom: 10px;
+        }
+        #close-modal {
+            background-color: #ff5555;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
         @media (max-width: 768px) {
             #container {
                 grid-template-columns: 1fr;
@@ -147,6 +204,7 @@
     <div id="playersOnline">Игроков онлайн: 0</div>
     <div id="container">
         <div id="game-section">
+            <button id="info-btn" title="Информация о игре">ℹ️</button>
             <h1>RIPCRIPTA MULTIPLAYER</h1>
             <div id="balance">Баланс: 10000 рублей</div>
             <div id="bankruptcyWarning">ВНИМАНИЕ: Ваш баланс критически низок!</div>
@@ -192,9 +250,25 @@
                     <div>Имя</div>
                     <div>Капитал</div>
                 </div>
-                <!-- Сюда будет загружаться топ -->
             </div>
         </div>
+    </div>
+
+    <!-- Модальное окно с информацией -->
+    <div id="overlay"></div>
+    <div id="info-modal">
+        <h2>Как играть в RIPCRIPTA MULTIPLAYER</h2>
+        <ul>
+            <li><strong>Цель игры:</strong> Заработать как можно больше денег, покупая и продавая криптовалюту</li>
+            <li><strong>Цены обновляются:</strong> Каждые 10 секунд</li>
+            <li><strong>Комиссия за сделки:</strong> 5% от суммы сделки</li>
+            <li><strong>События рынка:</strong> Случайные события (бумы и крахи) происходят с вероятностью 5% при каждом обновлении цен</li>
+            <li><strong>Покупка/продажа:</strong> Можно покупать/продавать только целое количество коинов</li>
+            <li><strong>Кулдаун:</strong> 5 секунд между сделками</li>
+            <li><strong>Мультиплеер:</strong> Все игроки видят одинаковые цены в реальном времени</li>
+            <li><strong>Банкротство:</strong> Если ваш баланс уходит в минус, игра заканчивается</li>
+        </ul>
+        <button id="close-modal">Закрыть</button>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -202,15 +276,15 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
-        // Firebase configuration (ЗАМЕНИТЕ НА СВОЙ!)
+        // Firebase configuration
         const firebaseConfig = {
-      apiKey: "AIzaSyBMM2ZbjhvGitBPja9Uw7XM9neAbllt7fM",
-      authDomain: "ripcripta.firebaseapp.com",
-      databaseURL: "https://ripcripta-default-rtdb.firebaseio.com",
-      projectId: "ripcripta",
-      storageBucket: "ripcripta.firebasestorage.app",
-      messagingSenderId: "874763426471",
-      appId: "1:874763426471:web:28ddfe63b94c2d6a0c9982",
+            apiKey: "AIzaSyBMM2ZbjhvGitBPja9Uw7XM9neAbllt7fM",
+        authDomain: "ripcripta.firebaseapp.com",
+        databaseURL: "https://ripcripta-default-rtdb.firebaseio.com",
+        projectId: "ripcripta",
+        storageBucket: "ripcripta.firebasestorage.app",
+        messagingSenderId: "874763426471",
+        appId: "1:874763426471:web:28ddfe63b94c2d6a0c9982",
         };
 
         // Initialize Firebase
@@ -222,7 +296,7 @@
         const COMMISSION = 0.05;
         const VOLATILITY_BASE = 100;
         const BANKRUPTCY_THRESHOLD = 100;
-        const PRICE_UPDATE_INTERVAL = 5000;
+        const PRICE_UPDATE_INTERVAL = 10000; // 10 секунд
 
         // Game state
         let balance = 10000;
@@ -231,6 +305,7 @@
         let playerName = localStorage.getItem('playerName') || "Игрок_" + Math.floor(Math.random() * 1000);
         let lastPriceUpdate = 0;
         let isMaster = false;
+        let priceUpdateInterval;
         
         // Save player ID and name
         localStorage.setItem('playerId', playerId);
@@ -309,6 +384,22 @@
             }
         });
 
+        // Info modal functionality
+        document.getElementById('info-btn').addEventListener('click', function() {
+            document.getElementById('info-modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        });
+
+        document.getElementById('close-modal').addEventListener('click', function() {
+            document.getElementById('info-modal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        });
+
+        document.getElementById('overlay').addEventListener('click', function() {
+            document.getElementById('info-modal').style.display = 'none';
+            this.style.display = 'none';
+        });
+
         // Initialize game
         function initGame() {
             // Load saved data
@@ -318,7 +409,7 @@
                 playerName = savedData.playerName || playerName;
                 for (const coin in savedData.coins) {
                     if (coins[coin]) {
-                        coins[coin].owned = Math.floor(savedData.coins[coin].owned) || 0; // Целые коины
+                        coins[coin].owned = Math.floor(savedData.coins[coin].owned) || 0;
                     }
                 }
                 history.push(...(savedData.history || []));
@@ -345,26 +436,31 @@
             database.ref('players').once('value').then((snapshot) => {
                 const players = snapshot.val() || {};
                 if (Object.keys(players).length === 0) {
-                    isMaster = true;
-                    setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+                    becomeMaster();
                 } else {
-                    // If master is inactive for 10 seconds, take over
+                    // If master is inactive for 15 seconds, take over
                     const now = Date.now();
                     let masterActive = false;
                     
                     for (const id in players) {
-                        if (players[id].lastActive > now - 10000) {
+                        if (players[id].lastActive > now - 15000) {
                             masterActive = true;
                             break;
                         }
                     }
                     
                     if (!masterActive) {
-                        isMaster = true;
-                        setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+                        becomeMaster();
                     }
                 }
             });
+        }
+
+        function becomeMaster() {
+            isMaster = true;
+            console.log("Стал мастером, обновляю цены");
+            updatePrices(); // Immediate update
+            priceUpdateInterval = setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
         }
 
         // Setup Firebase listeners
@@ -373,6 +469,8 @@
             database.ref('prices').on('value', (snapshot) => {
                 const prices = snapshot.val();
                 if (prices) {
+                    lastPriceUpdate = Date.now();
+                    
                     for (const coin in prices) {
                         if (coins[coin]) {
                             coins[coin].price = prices[coin].price;
@@ -404,20 +502,18 @@
                 const players = snapshot.val() || {};
                 document.getElementById('playersOnline').innerText = `Игроков онлайн: ${Object.keys(players).length}`;
                 
-                // If no price updates in 10 seconds and we're not master, check if we should become master
-                if (!isMaster && Date.now() - lastPriceUpdate > 10000) {
+                // If no price updates in 15 seconds and we're not master, check if we should become master
+                if (!isMaster && Date.now() - lastPriceUpdate > 15000) {
                     let masterActive = false;
                     for (const id in players) {
-                        if (players[id].lastActive > Date.now() - 10000) {
+                        if (players[id].lastActive > Date.now() - 15000) {
                             masterActive = true;
                             break;
                         }
                     }
                     
                     if (!masterActive) {
-                        isMaster = true;
-                        updatePrices();
-                        setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+                        becomeMaster();
                     }
                 }
             });
@@ -467,7 +563,9 @@
                 updateHistory();
             }
             
-            database.ref('prices').set(newPrices);
+            database.ref('prices').set(newPrices)
+                .then(() => console.log("Цены успешно обновлены"))
+                .catch(error => console.error("Ошибка обновления цен:", error));
         }
 
         // Update player data in Firebase
@@ -485,7 +583,9 @@
                 },
                 totalValue: totalValue,
                 lastActive: Date.now()
-            });
+            })
+            .then(() => console.log("Данные игрока обновлены"))
+            .catch(error => console.error("Ошибка обновления данных игрока:", error));
             
             updateLeaderboard();
         }
@@ -728,6 +828,7 @@
             if (confirm('Вы уверены, что хотите начать заново? Все ваши данные будут удалены!')) {
                 localStorage.removeItem('ripcriptaData');
                 localStorage.removeItem('playerNameSet');
+                if (priceUpdateInterval) clearInterval(priceUpdateInterval);
                 database.ref('players/' + playerId).remove();
                 location.reload();
             }
