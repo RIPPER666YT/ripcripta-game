@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIPCRIPTA MULTIPLAYER</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #ff5555;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        canvas {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border: 1px solid #ff5555;
+            margin: 10px 0;
+        }
+        #balance {
+            font-size: 24px;
+            margin: 20px 0;
+            color: #ffaa00;
+        }
+        #container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        #history {
+            color: #ff8888;
+            margin-top: 20px;
+            text-align: left;
+            max-width: 600px;
+            overflow-y: auto;
+            max-height: 300px;
+            border: 1px solid #ff5555;
+            padding: 10px;
+            background-color: rgba(255, 0, 0, 0.05);
+            margin: 20px auto;
+        }
+        #stats {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ff8888;
+            text-align: left;
+            padding: 10px;
+            border: 1px solid #ff5555;
+            background-color: rgba(255, 0, 0, 0.05);
+        }
+        .button-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 12px;
+            background-color: #222;
+            border: 1px solid;
+            color: #ff5555;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background-color: #ff5555;
+            color: #000;
+        }
+        .price-display {
+            font-size: 18px;
+            margin: 10px 0;
+            padding: 8px;
+            background-color: rgba(255, 85, 85, 0.1);
+            border-left: 3px solid;
+        }
+        #bankruptcyWarning {
+            color: #ff0000;
+            font-weight: bold;
+            background-color: rgba(255, 0, 0, 0.1);
+            padding: 10px;
+            display: none;
+            border: 1px solid #ff0000;
+        }
+        #resetBtn {
+            background-color: rgba(255, 0, 0, 0.2);
+            border-color: #ff0000;
+            margin: 20px auto;
+            display: block;
+            width: 200px;
+        }
+        #playersOnline {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border: 1px solid #ff5555;
+            border-radius: 5px;
+        }
+        @media (max-width: 768px) {
+            .button-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="playersOnline">Игроков онлайн: 0</div>
+    <div id="container">
+        <h1>RIPCRIPTA MULTIPLAYER</h1>
+        <div id="balance">Баланс: 10000 рублей</div>
+        <div id="bankruptcyWarning">ВНИМАНИЕ: Ваш баланс критически низок!</div>
+        
+        <canvas id="priceChart"></canvas>
+        
+        <div class="price-display" style="border-left-color: red;" id="currentPrice">RIPCOIN: 1000 рублей</div>
+        <div class="price-display" style="border-left-color: green;" id="currentNPrice">NCOIN: 500 рублей</div>
+        <div class="price-display" style="border-left-color: blue;" id="currentFPrice">FCOIN: 300 рублей</div>
+        <div class="price-display" style="border-left-color: purple;" id="currentTPrice">TWITCHCOIN: 200 рублей</div>
+        
+        <div class="button-container">
+            <button onclick="buyCoin('RIPCOIN')" style="border-color: red;">Купить RIPCOIN</button>
+            <button onclick="sellCoin('RIPCOIN')" style="border-color: red;">Продать RIPCOIN</button>
+            <button onclick="buyCoin('NCOIN')" style="border-color: green;">Купить NCOIN</button>
+            <button onclick="sellCoin('NCOIN')" style="border-color: green;">Продать NCOIN</button>
+            <button onclick="buyCoin('FCOIN')" style="border-color: blue;">Купить FCOIN</button>
+            <button onclick="sellCoin('FCOIN')" style="border-color: blue;">Продать FCOIN</button>
+            <button onclick="buyCoin('TWITCHCOIN')" style="border-color: purple;">Купить TWITCHCOIN</button>
+            <button onclick="sellCoin('TWITCHCOIN')" style="border-color: purple;">Продать TWITCHCOIN</button>
+        </div>
+        
+        <button id="resetBtn" onclick="resetGame()">Начать заново</button>
+        
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
+            <div id="history"><h3>История операций</h3></div>
+            <div id="stats">
+                <h3>Ваши активы</h3>
+                <p id="ripcoinStats">RIPCOIN: 0 (0 рублей)</p>
+                <p id="ncoinStats">NCOIN: 0 (0 рублей)</p>
+                <p id="fcoinStats">FCOIN: 0 (0 рублей)</p>
+                <p id="tcoinStats">TWITCHCOIN: 0 (0 рублей)</p>
+                <p id="totalValue">Общая стоимость: 0 рублей</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMM2ZbjhvGitBPja9Uw7XM9neAbllt7fM",
+            authDomain: "ripcripta.firebaseapp.com",
+            databaseURL: "https://ripcripta-default-rtdb.firebaseio.com",
+            projectId: "ripcripta",
+            storageBucket: "ripcripta.firebasestorage.app",
+            messagingSenderId: "1874763426471",
+            appId: "1:874763426471:web:28ddfe63b94c2d6a0c9982"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Game constants
+        const MAX_PRICE = 100000;
+        const COMMISSION = 0.05;
+        const VOLATILITY_BASE = 100;
+        const BANKRUPTCY_THRESHOLD = 100;
+        const PRICE_UPDATE_INTERVAL = 5000;
+
+        // Game state
+        let balance = 10000;
+        let lastTradeTime = 0;
+        let playerId = Math.random().toString(36).substr(2, 9);
+        let lastPriceUpdate = 0;
+        
+        const coins = {
+            RIPCOIN: { price: 1000, owned: 0, color: 'red', minPrice: 100 },
+            NCOIN: { price: 500, owned: 0, color: 'green', minPrice: 50 },
+            FCOIN: { price: 300, owned: 0, color: 'blue', minPrice: 30 },
+            TWITCHCOIN: { price: 200, owned: 0, color: 'purple', minPrice: 20 }
+        };
+        
+        const labels = [];
+        const history = [];
+        const priceData = {
+            RIPCOIN: [],
+            NCOIN: [],
+            FCOIN: [],
+            TWITCHCOIN: []
+        };
+
+        // Chart initialization
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        const priceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: Object.keys(coins).map(coinName => ({
+                    label: coinName,
+                    data: priceData[coinName],
+                    borderColor: coins[coinName].color,
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1
+                }))
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        max: MAX_PRICE * 1.1,
+                        min: 0,
+                        grid: {
+                            color: 'rgba(255, 85, 85, 0.1)'
+                        },
+                        ticks: {
+                            color: '#ff8888'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 85, 85, 0.1)'
+                        },
+                        ticks: {
+                            color: '#ff8888'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#ff8888'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Firebase listeners
+        function setupFirebaseListeners() {
+            // Listen for price updates
+            database.ref('prices').on('value', (snapshot) => {
+                const prices = snapshot.val();
+                if (prices) {
+                    for (const coin in prices) {
+                        if (coins[coin]) {
+                            coins[coin].price = prices[coin].price;
+                            priceData[coin].push(prices[coin].price);
+                            
+                            // Keep only last 100 price points
+                            if (priceData[coin].length > 100) {
+                                priceData[coin].shift();
+                            }
+                        }
+                    }
+                    
+                    labels.push(new Date(prices.timestamp).toLocaleTimeString());
+                    if (labels.length > 100) labels.shift();
+                    
+                    updatePriceDisplays();
+                    priceChart.update();
+                    
+                    // Add to history if it's a market event
+                    if (prices.event) {
+                        history.unshift(prices.event);
+                        updateHistory();
+                    }
+                }
+            });
+            
+            // Listen for player count
+            database.ref('players').on('value', (snapshot) => {
+                const players = snapshot.val() || {};
+                document.getElementById('playersOnline').innerText = `Игроков онлайн: ${Object.keys(players).length}`;
+            });
+            
+            // Register player
+            database.ref('players/' + playerId).set({
+                lastActive: Date.now()
+            });
+            
+            // Update player activity every minute
+            setInterval(() => {
+                database.ref('players/' + playerId).update({
+                    lastActive: Date.now()
+                });
+            }, 60000);
+        }
+
+        // Initialize game
+        function initGame() {
+            // Load saved data
+            const savedData = JSON.parse(localStorage.getItem('ripcriptaData'));
+            if (savedData) {
+                balance = savedData.balance || balance;
+                for (const coin in savedData.coins) {
+                    if (coins[coin]) {
+                        coins[coin].owned = savedData.coins[coin].owned || 0;
+                    }
+                }
+                history.push(...(savedData.history || []));
+            }
+            
+            setupFirebaseListeners();
+            updateUI();
+            
+            // Remove inactive players (15 minutes threshold)
+            database.ref('players').once('value').then((snapshot) => {
+                const players = snapshot.val() || {};
+                const now = Date.now();
+                for (const id in players) {
+                    if (now - players[id].lastActive > 900000) {
+                        database.ref('players/' + id).remove();
+                    }
+                }
+            });
+        }
+
+        // Save game state
+        function saveGame() {
+            const dataToSave = {
+                balance,
+                coins: {
+                    RIPCOIN: { owned: coins.RIPCOIN.owned },
+                    NCOIN: { owned: coins.NCOIN.owned },
+                    FCOIN: { owned: coins.FCOIN.owned },
+                    TWITCHCOIN: { owned: coins.TWITCHCOIN.owned }
+                },
+                history: history.slice(-50) // Save last 50 history items
+            };
+            localStorage.setItem('ripcriptaData', JSON.stringify(dataToSave));
+        }
+
+        // Trade functions
+        function tradeCoin(coinName, isBuy) {
+            const now = Date.now();
+            const cooldown = 5000;
+            
+            if (now - lastTradeTime < cooldown) {
+                const remaining = Math.ceil((cooldown - (now - lastTradeTime)) / 1000);
+                alert(`Подождите ${remaining} секунд перед следующей сделкой`);
+                return;
+            }
+            
+            const coin = coins[coinName];
+            const action = isBuy ? 'Купить' : 'Продать';
+            const amount = parseFloat(prompt(`Введите количество ${coinName} для ${action.toLowerCase()}я:`));
+            
+            if (isNaN(amount)) return;
+            
+            let success = false;
+            let message = "";
+            
+            if (isBuy) {
+                const maxBuy = (balance / coin.price) * 0.1;
+                const actualAmount = Math.min(amount, maxBuy);
+                const totalCost = actualAmount * coin.price * (1 + COMMISSION);
+                
+                if (totalCost > balance) {
+                    alert(`Недостаточно средств. Максимум можно купить: ${maxBuy.toFixed(2)} ${coinName}`);
+                } else {
+                    balance -= totalCost;
+                    coin.owned += actualAmount;
+                    message = `${action}но ${actualAmount.toFixed(2)} ${coinName} за ${totalCost.toFixed(2)} рублей (комиссия ${COMMISSION * 100}%)`;
+                    success = true;
+                }
+            } else {
+                if (amount > coin.owned) {
+                    alert(`Недостаточно ${coinName} для продажи.`);
+                } else {
+                    const totalSale = amount * coin.price * (1 - COMMISSION);
+                    balance += totalSale;
+                    coin.owned -= amount;
+                    message = `Продано ${amount.toFixed(2)} ${coinName} за ${totalSale.toFixed(2)} рублей (комиссия ${COMMISSION * 100}%)`;
+                    success = true;
+                }
+            }
+            
+            if (success) {
+                lastTradeTime = now;
+                history.unshift(message);
+                updateUI();
+                checkBankruptcy();
+                saveGame();
+            }
+        }
+
+        function buyCoin(coinName) {
+            tradeCoin(coinName, true);
+        }
+
+        function sellCoin(coinName) {
+            tradeCoin(coinName, false);
+        }
+
+        // UI updates
+        function updateUI() {
+            document.getElementById('balance').innerText = `Баланс: ${balance.toFixed(2)} рублей`;
+            document.getElementById('ripcoinStats').innerText = 
+                `RIPCOIN: ${coins.RIPCOIN.owned.toFixed(2)} (${(coins.RIPCOIN.owned * coins.RIPCOIN.price).toFixed(2)} рублей)`;
+            document.getElementById('ncoinStats').innerText = 
+                `NCOIN: ${coins.NCOIN.owned.toFixed(2)} (${(coins.NCOIN.owned * coins.NCOIN.price).toFixed(2)} рублей)`;
+            document.getElementById('fcoinStats').innerText = 
+                `FCOIN: ${coins.FCOIN.owned.toFixed(2)} (${(coins.FCOIN.owned * coins.FCOIN.price).toFixed(2)} рублей)`;
+            document.getElementById('tcoinStats').innerText = 
+                `TWITCHCOIN: ${coins.TWITCHCOIN.owned.toFixed(2)} (${(coins.TWITCHCOIN.owned * coins.TWITCHCOIN.price).toFixed(2)} рублей)`;
+            
+            const totalValue = Object.values(coins).reduce(
+                (sum, coin) => sum + (coin.owned * coin.price), balance
+            );
+            document.getElementById('totalValue').innerText = 
+                `Общая стоимость: ${totalValue.toFixed(2)} рублей`;
+            
+            updatePriceDisplays();
+            updateHistory();
+        }
+
+        function updatePriceDisplays() {
+            document.getElementById('currentPrice').innerText = 
+                `RIPCOIN: ${coins.RIPCOIN.price.toFixed(2)} рублей`;
+            document.getElementById('currentNPrice').innerText = 
+                `NCOIN: ${coins.NCOIN.price.toFixed(2)} рублей`;
+            document.getElementById('currentFPrice').innerText = 
+                `FCOIN: ${coins.FCOIN.price.toFixed(2)} рублей`;
+            document.getElementById('currentTPrice').innerText = 
+                `TWITCHCOIN: ${coins.TWITCHCOIN.price.toFixed(2)} рублей`;
+        }
+
+        function updateHistory() {
+            const historyDiv = document.getElementById('history');
+            historyDiv.innerHTML = `<h3>История операций</h3>` + 
+                history.slice(0, 20).map(entry => `<p>${entry}</p>`).join('');
+        }
+
+        // Game management
+        function checkBankruptcy() {
+            const bankruptcyWarning = document.getElementById('bankruptcyWarning');
+            if (balance < BANKRUPTCY_THRESHOLD) {
+                bankruptcyWarning.style.display = 'block';
+                
+                if (balance <= 0) {
+                    setTimeout(() => {
+                        if (confirm('Вы банкрот! Начать заново?')) {
+                            resetGame();
+                        }
+                    }, 500);
+                }
+            } else {
+                bankruptcyWarning.style.display = 'none';
+            }
+        }
+
+        function resetGame() {
+            if (confirm('Вы уверены, что хотите начать заново? Все ваши данные будут удалены!')) {
+                localStorage.removeItem('ripcriptaData');
+                database.ref('players/' + playerId).remove();
+                location.reload();
+            }
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
