@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RIPCRIPTA</title>
+    <title>RIPCRIPTA MULTIPLAYER</title>
     <style>
         body {
             background-color: #111;
@@ -147,7 +147,7 @@
     <div id="playersOnline">Игроков онлайн: 0</div>
     <div id="container">
         <div id="game-section">
-            <h1>RIPCRIPTA</h1>
+            <h1>RIPCRIPTA MULTIPLAYER</h1>
             <div id="balance">Баланс: 10000 рублей</div>
             <div id="bankruptcyWarning">ВНИМАНИЕ: Ваш баланс критически низок!</div>
             
@@ -230,6 +230,7 @@
         let playerId = localStorage.getItem('playerId') || Math.random().toString(36).substr(2, 9);
         let playerName = localStorage.getItem('playerName') || "Игрок_" + Math.floor(Math.random() * 1000);
         let lastPriceUpdate = 0;
+        let isMaster = false;
         
         // Save player ID and name
         localStorage.setItem('playerId', playerId);
@@ -270,14 +271,16 @@
                 responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: false,
-                        max: MAX_PRICE * 1.1,
-                        min: 0,
+                        beginAtZero: true,
+                        suggestedMax: MAX_PRICE,
+                        ticks: {
+                            color: '#ff8888',
+                            callback: function(value) {
+                                return value.toLocaleString('ru-RU') + ' ₽';
+                            }
+                        },
                         grid: {
                             color: 'rgba(255, 85, 85, 0.1)'
-                        },
-                        ticks: {
-                            color: '#ff8888'
                         }
                     },
                     x: {
@@ -294,6 +297,13 @@
                         labels: {
                             color: '#ff8888'
                         }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('ru-RU') + ' ₽';
+                            }
+                        }
                     }
                 }
             }
@@ -308,7 +318,7 @@
                 playerName = savedData.playerName || playerName;
                 for (const coin in savedData.coins) {
                     if (coins[coin]) {
-                        coins[coin].owned = savedData.coins[coin].owned || 0;
+                        coins[coin].owned = Math.floor(savedData.coins[coin].owned) || 0; // Целые коины
                     }
                 }
                 history.push(...(savedData.history || []));
@@ -331,8 +341,30 @@
                 }, 1000);
             }
 
-            // Start price updates
-            setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+            // Check if we're the first player (master)
+            database.ref('players').once('value').then((snapshot) => {
+                const players = snapshot.val() || {};
+                if (Object.keys(players).length === 0) {
+                    isMaster = true;
+                    setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+                } else {
+                    // If master is inactive for 10 seconds, take over
+                    const now = Date.now();
+                    let masterActive = false;
+                    
+                    for (const id in players) {
+                        if (players[id].lastActive > now - 10000) {
+                            masterActive = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!masterActive) {
+                        isMaster = true;
+                        setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+                    }
+                }
+            });
         }
 
         // Setup Firebase listeners
@@ -352,11 +384,18 @@
                         }
                     }
                     
-                    labels.push(new Date().toLocaleTimeString());
+                    // Use local time for labels
+                    const now = new Date();
+                    labels.push(now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0'));
                     if (labels.length > 100) labels.shift();
                     
                     updatePriceDisplays();
                     priceChart.update();
+                    
+                    if (prices.event) {
+                        history.unshift(prices.event);
+                        updateHistory();
+                    }
                 }
             });
             
@@ -364,6 +403,23 @@
             database.ref('players').on('value', (snapshot) => {
                 const players = snapshot.val() || {};
                 document.getElementById('playersOnline').innerText = `Игроков онлайн: ${Object.keys(players).length}`;
+                
+                // If no price updates in 10 seconds and we're not master, check if we should become master
+                if (!isMaster && Date.now() - lastPriceUpdate > 10000) {
+                    let masterActive = false;
+                    for (const id in players) {
+                        if (players[id].lastActive > Date.now() - 10000) {
+                            masterActive = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!masterActive) {
+                        isMaster = true;
+                        updatePrices();
+                        setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+                    }
+                }
             });
             
             // Register player
@@ -482,7 +538,7 @@
                     <div class="player-row" style="${player.isYou ? 'background: rgba(255, 215, 0, 0.2);' : ''}">
                         <div>${index + 1}</div>
                         <div>${player.name}</div>
-                        <div>${player.totalValue.toFixed(2)} ₽</div>
+                        <div>${player.totalValue.toLocaleString('ru-RU')} ₽</div>
                     </div>
                 `;
             });
@@ -540,7 +596,7 @@
             updatePlayerData();
         }
 
-        // Trade functions
+        // Trade functions (only whole coins)
         function tradeCoin(coinName, isBuy) {
             const now = Date.now();
             const cooldown = 5000;
@@ -553,34 +609,45 @@
             
             const coin = coins[coinName];
             const action = isBuy ? 'Купить' : 'Продать';
-            const amount = parseFloat(prompt(`Введите количество ${coinName} для ${action.toLowerCase()}я:`));
+            const amountInput = prompt(`Введите количество ${coinName} для ${action.toLowerCase()}я (только целые числа):`);
             
-            if (isNaN(amount)) return;
+            if (!amountInput) return;
+            
+            const amount = parseInt(amountInput);
+            if (isNaN(amount)) {
+                alert("Введите целое число!");
+                return;
+            }
+            
+            if (amount <= 0) {
+                alert("Количество должно быть больше 0!");
+                return;
+            }
             
             let success = false;
             let message = "";
             
             if (isBuy) {
-                const maxBuy = (balance / coin.price) * 0.1;
+                const maxBuy = Math.floor((balance / coin.price) * (1 - COMMISSION));
                 const actualAmount = Math.min(amount, maxBuy);
                 const totalCost = actualAmount * coin.price * (1 + COMMISSION);
                 
-                if (totalCost > balance) {
-                    alert(`Недостаточно средств. Максимум можно купить: ${maxBuy.toFixed(2)} ${coinName}`);
+                if (actualAmount <= 0) {
+                    alert(`Недостаточно средств. Максимум можно купить: ${maxBuy} ${coinName}`);
                 } else {
                     balance -= totalCost;
                     coin.owned += actualAmount;
-                    message = `${action}но ${actualAmount.toFixed(2)} ${coinName} за ${totalCost.toFixed(2)} рублей (комиссия ${COMMISSION * 100}%)`;
+                    message = `${action}но ${actualAmount} ${coinName} за ${totalCost.toFixed(2)} рублей (комиссия ${COMMISSION * 100}%)`;
                     success = true;
                 }
             } else {
                 if (amount > coin.owned) {
-                    alert(`Недостаточно ${coinName} для продажи.`);
+                    alert(`Недостаточно ${coinName} для продажи. Доступно: ${coin.owned}`);
                 } else {
                     const totalSale = amount * coin.price * (1 - COMMISSION);
                     balance += totalSale;
                     coin.owned -= amount;
-                    message = `Продано ${amount.toFixed(2)} ${coinName} за ${totalSale.toFixed(2)} рублей (комиссия ${COMMISSION * 100}%)`;
+                    message = `Продано ${amount} ${coinName} за ${totalSale.toFixed(2)} рублей (комиссия ${COMMISSION * 100}%)`;
                     success = true;
                 }
             }
@@ -606,17 +673,17 @@
         function updateUI() {
             document.getElementById('balance').innerText = `Баланс: ${balance.toFixed(2)} рублей`;
             document.getElementById('ripcoinStats').innerText = 
-                `RIPCOIN: ${coins.RIPCOIN.owned.toFixed(2)} (${(coins.RIPCOIN.owned * coins.RIPCOIN.price).toFixed(2)} рублей)`;
+                `RIPCOIN: ${coins.RIPCOIN.owned} (${(coins.RIPCOIN.owned * coins.RIPCOIN.price).toFixed(2)} рублей)`;
             document.getElementById('ncoinStats').innerText = 
-                `NCOIN: ${coins.NCOIN.owned.toFixed(2)} (${(coins.NCOIN.owned * coins.NCOIN.price).toFixed(2)} рублей)`;
+                `NCOIN: ${coins.NCOIN.owned} (${(coins.NCOIN.owned * coins.NCOIN.price).toFixed(2)} рублей)`;
             document.getElementById('fcoinStats').innerText = 
-                `FCOIN: ${coins.FCOIN.owned.toFixed(2)} (${(coins.FCOIN.owned * coins.FCOIN.price).toFixed(2)} рублей)`;
+                `FCOIN: ${coins.FCOIN.owned} (${(coins.FCOIN.owned * coins.FCOIN.price).toFixed(2)} рублей)`;
             document.getElementById('tcoinStats').innerText = 
-                `TWITCHCOIN: ${coins.TWITCHCOIN.owned.toFixed(2)} (${(coins.TWITCHCOIN.owned * coins.TWITCHCOIN.price).toFixed(2)} рублей)`;
+                `TWITCHCOIN: ${coins.TWITCHCOIN.owned} (${(coins.TWITCHCOIN.owned * coins.TWITCHCOIN.price).toFixed(2)} рублей)`;
             
             const totalValue = calculateTotalValue();
             document.getElementById('totalValue').innerText = 
-                `Общая стоимость: ${totalValue.toFixed(2)} рублей`;
+                `Общая стоимость: ${totalValue.toLocaleString('ru-RU')} рублей`;
             
             updatePriceDisplays();
             updateHistory();
@@ -624,13 +691,13 @@
 
         function updatePriceDisplays() {
             document.getElementById('currentPrice').innerText = 
-                `RIPCOIN: ${coins.RIPCOIN.price.toFixed(2)} рублей`;
+                `RIPCOIN: ${coins.RIPCOIN.price.toLocaleString('ru-RU')} рублей`;
             document.getElementById('currentNPrice').innerText = 
-                `NCOIN: ${coins.NCOIN.price.toFixed(2)} рублей`;
+                `NCOIN: ${coins.NCOIN.price.toLocaleString('ru-RU')} рублей`;
             document.getElementById('currentFPrice').innerText = 
-                `FCOIN: ${coins.FCOIN.price.toFixed(2)} рублей`;
+                `FCOIN: ${coins.FCOIN.price.toLocaleString('ru-RU')} рублей`;
             document.getElementById('currentTPrice').innerText = 
-                `TWITCHCOIN: ${coins.TWITCHCOIN.price.toFixed(2)} рублей`;
+                `TWITCHCOIN: ${coins.TWITCHCOIN.price.toLocaleString('ru-RU')} рублей`;
         }
 
         function updateHistory() {
