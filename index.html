@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RIPCRIPTA MULTIPLAYER</title>
+    <title>RIPCRIPTA</title>
     <style>
         body {
             background-color: #111;
@@ -69,6 +69,7 @@
             font-size: 16px;
             cursor: pointer;
             transition: all 0.3s;
+            border-radius: 5px;
         }
         button:hover {
             background-color: #ff5555;
@@ -88,6 +89,7 @@
             padding: 10px;
             display: none;
             border: 1px solid #ff0000;
+            border-radius: 5px;
         }
         #resetBtn {
             background-color: rgba(255, 0, 0, 0.2);
@@ -122,12 +124,14 @@
             background: rgba(255, 85, 85, 0.2);
         }
         #search-player {
-            width: 100%;
-            padding: 10px;
+            width: 90%;
+            padding: 8px;
             margin: 10px 0;
             background: #222;
             border: 1px solid #ff5555;
             color: white;
+            border-radius: 15px;
+            outline: none;
         }
         @media (max-width: 768px) {
             #container {
@@ -143,7 +147,7 @@
     <div id="playersOnline">Игроков онлайн: 0</div>
     <div id="container">
         <div id="game-section">
-            <h1>RIPCRIPTA MULTIPLAYER</h1>
+            <h1>RIPCRIPTA</h1>
             <div id="balance">Баланс: 10000 рублей</div>
             <div id="bankruptcyWarning">ВНИМАНИЕ: Ваш баланс критически низок!</div>
             
@@ -165,8 +169,6 @@
                 <button onclick="sellCoin('TWITCHCOIN')" style="border-color: purple;">Продать TWITCHCOIN</button>
             </div>
             
-            <button id="resetBtn" onclick="resetGame()">Начать заново</button>
-            
             <div id="stats">
                 <h3>Ваши активы</h3>
                 <p id="ripcoinStats">RIPCOIN: 0 (0 рублей)</p>
@@ -177,6 +179,8 @@
             </div>
             
             <div id="history"><h3>История операций</h3></div>
+
+            <button id="resetBtn" onclick="resetGame()">Начать заново</button>
         </div>
 
         <div id="leaderboard-section">
@@ -193,7 +197,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -201,13 +204,13 @@
     <script>
         // Firebase configuration (ЗАМЕНИТЕ НА СВОЙ!)
         const firebaseConfig = {
-  apiKey: "AIzaSyBMM2ZbjhvGitBPja9Uw7XM9neAbllt7fM",
-  authDomain: "ripcripta.firebaseapp.com",
-  databaseURL: "https://ripcripta-default-rtdb.firebaseio.com",
-  projectId: "ripcripta",
-  storageBucket: "ripcripta.firebasestorage.app",
-  messagingSenderId: "874763426471",
-  appId: "1:874763426471:web:28ddfe63b94c2d6a0c9982"
+            apiKey: "AIzaSyDzZQJzQJzQJzQJzQJzQJzQJzQJzQJzQJ",
+            authDomain: "ripcripta-multiplayer.firebaseapp.com",
+            databaseURL: "https://ripcripta-multiplayer-default-rtdb.firebaseio.com",
+            projectId: "ripcripta-multiplayer",
+            storageBucket: "ripcripta-multiplayer.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdefghijklmnopqrstuv"
         };
 
         // Initialize Firebase
@@ -224,9 +227,13 @@
         // Game state
         let balance = 10000;
         let lastTradeTime = 0;
-        let playerId = Math.random().toString(36).substr(2, 9);
-        let playerName = "Игрок_" + Math.floor(Math.random() * 1000);
+        let playerId = localStorage.getItem('playerId') || Math.random().toString(36).substr(2, 9);
+        let playerName = localStorage.getItem('playerName') || "Игрок_" + Math.floor(Math.random() * 1000);
         let lastPriceUpdate = 0;
+        
+        // Save player ID and name
+        localStorage.setItem('playerId', playerId);
+        localStorage.setItem('playerName', playerName);
         
         const coins = {
             RIPCOIN: { price: 1000, owned: 0, color: 'red', minPrice: 100 },
@@ -311,19 +318,21 @@
             updateUI();
             updateLeaderboard();
             
-            // Set player name
-            setTimeout(() => {
-                const name = prompt("Введите ваше имя для таблицы лидеров:", playerName);
-                if (name && name.trim() !== "") {
-                    playerName = name.trim().substring(0, 20);
-                    saveGame();
-                }
-            }, 1000);
+            // Set player name if not set
+            if (!localStorage.getItem('playerNameSet')) {
+                setTimeout(() => {
+                    const name = prompt("Введите ваше имя для таблицы лидеров:", playerName);
+                    if (name && name.trim() !== "") {
+                        playerName = name.trim().substring(0, 20);
+                        localStorage.setItem('playerName', playerName);
+                        localStorage.setItem('playerNameSet', 'true');
+                        saveGame();
+                    }
+                }, 1000);
+            }
 
             // Start price updates
-            if (playerId === Object.keys(players)[0]) { // Only first player updates prices
-                setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
-            }
+            setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
         }
 
         // Setup Firebase listeners
@@ -343,7 +352,7 @@
                         }
                     }
                     
-                    labels.push(new Date(prices.timestamp).toLocaleTimeString());
+                    labels.push(new Date().toLocaleTimeString());
                     if (labels.length > 100) labels.shift();
                     
                     updatePriceDisplays();
@@ -355,11 +364,6 @@
             database.ref('players').on('value', (snapshot) => {
                 const players = snapshot.val() || {};
                 document.getElementById('playersOnline').innerText = `Игроков онлайн: ${Object.keys(players).length}`;
-                
-                // If no price updates in 10 seconds, take over
-                if (Date.now() - lastPriceUpdate > 10000 && playerId === Object.keys(players)[0]) {
-                    updatePrices();
-                }
             });
             
             // Register player
@@ -389,28 +393,25 @@
             
             // 5% chance for random event
             if (Math.random() < 0.05) {
-                triggerRandomEvent(newPrices);
+                const coinNames = Object.keys(coins);
+                const randomCoin = coinNames[Math.floor(Math.random() * coinNames.length)];
+                const eventType = Math.random() > 0.5 ? 'boom' : 'crash';
+                const multiplier = eventType === 'boom' ? 1.5 : 0.7;
+                
+                newPrices[randomCoin].price = Math.max(
+                    coins[randomCoin].minPrice,
+                    Math.min(MAX_PRICE, newPrices[randomCoin].price * multiplier)
+                );
+                
+                newPrices.event = eventType === 'boom' 
+                    ? `🚀 Бум ${randomCoin}! Цена выросла на 50%` 
+                    : `⚡ Крах ${randomCoin}! Цена упала на 30%`;
+                
+                history.unshift(newPrices.event);
+                updateHistory();
             }
             
             database.ref('prices').set(newPrices);
-        }
-
-        // Random market event
-        function triggerRandomEvent(newPrices) {
-            const coinNames = Object.keys(coins);
-            const randomCoin = coinNames[Math.floor(Math.random() * coinNames.length)];
-            const eventTypes = ['crash', 'boom'];
-            const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-            
-            let multiplier = eventType === 'crash' ? 0.7 : 1.5; // -30% or +50%
-            newPrices[randomCoin].price = Math.max(
-                coins[randomCoin].minPrice,
-                Math.min(MAX_PRICE, newPrices[randomCoin].price * multiplier)
-            );
-            
-            newPrices.event = eventType === 'crash' 
-                ? `⚡ Крах ${randomCoin}! Цена упала на 30%` 
-                : `🚀 Бум ${randomCoin}! Цена выросла на 50%`;
         }
 
         // Update player data in Firebase
@@ -659,6 +660,7 @@
         function resetGame() {
             if (confirm('Вы уверены, что хотите начать заново? Все ваши данные будут удалены!')) {
                 localStorage.removeItem('ripcriptaData');
+                localStorage.removeItem('playerNameSet');
                 database.ref('players/' + playerId).remove();
                 location.reload();
             }
