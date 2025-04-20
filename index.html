@@ -444,36 +444,66 @@
                 }, 1000);
             }
 
-            // Check if we're the first player (master)
-            database.ref('players').once('value').then((snapshot) => {
-                const players = snapshot.val() || {};
-                if (Object.keys(players).length === 0) {
-                    becomeMaster();
-                } else {
-                    // If master is inactive for 15 seconds, take over
-                    const now = Date.now();
-                    let masterActive = false;
-                    
-                    for (const id in players) {
-                        if (players[id].lastActive > now - 15000) {
-                            masterActive = true;
-                            break;
+            // Check for existing master and prices
+            checkMasterStatus();
+            
+            // Regular master checks
+            setInterval(checkMasterStatus, 10000);
+        }
+
+        function checkMasterStatus() {
+            const now = Date.now();
+            
+            // Check if we have prices and they're recent
+            database.ref('prices').once('value').then((priceSnapshot) => {
+                const prices = priceSnapshot.val();
+                const pricesExist = prices && Object.keys(prices).length > 0;
+                const pricesRecent = prices && prices.RIPCOIN && (now - prices.RIPCOIN.timestamp) < PRICE_UPDATE_INTERVAL * 2;
+                
+                // If prices don't exist or are too old, check for master
+                if (!pricesExist || !pricesRecent) {
+                    database.ref('master').once('value').then((masterSnapshot) => {
+                        const master = masterSnapshot.val();
+                        const masterActive = master && (now - master.lastActive) < 15000;
+                        
+                        // If no active master, try to become one
+                        if (!masterActive && !isMaster) {
+                            tryBecomeMaster();
                         }
-                    }
-                    
-                    if (!masterActive) {
-                        becomeMaster();
-                    }
+                    });
                 }
             });
         }
 
-        function becomeMaster() {
-            isMaster = true;
-            console.log("Стал мастером, обновляю цены");
-            updatePrices(); // Immediate update
-            if (priceUpdateInterval) clearInterval(priceUpdateInterval);
-            priceUpdateInterval = setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+        function tryBecomeMaster() {
+            const now = Date.now();
+            const masterRef = database.ref('master');
+            
+            // Use transaction to ensure only one master
+            masterRef.transaction((currentMaster) => {
+                if (currentMaster === null || now - currentMaster.lastActive > 15000) {
+                    return { 
+                        playerId: playerId,
+                        lastActive: now
+                    };
+                }
+                return currentMaster; // abort if someone else is master
+            }, (error, committed) => {
+                if (error) {
+                    console.error("Master transaction failed:", error);
+                } else if (committed) {
+                    console.log("Стал мастером");
+                    isMaster = true;
+                    updatePrices(); // Immediate update
+                    if (priceUpdateInterval) clearInterval(priceUpdateInterval);
+                    priceUpdateInterval = setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+                    
+                    // Mark ourselves as master in players list
+                    database.ref('players/' + playerId).update({
+                        isMaster: true
+                    });
+                }
+            });
         }
 
         // Setup Firebase listeners
@@ -514,21 +544,6 @@
             database.ref('players').on('value', (snapshot) => {
                 const players = snapshot.val() || {};
                 document.getElementById('playersOnline').innerText = `Игроков онлайн: ${Object.keys(players).length}`;
-                
-                // If no price updates in 15 seconds and we're not master, check if we should become master
-                if (!isMaster && Date.now() - lastPriceUpdate > 15000) {
-                    let masterActive = false;
-                    for (const id in players) {
-                        if (players[id].lastActive > Date.now() - 15000) {
-                            masterActive = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!masterActive) {
-                        becomeMaster();
-                    }
-                }
             });
             
             // Register player
@@ -542,6 +557,11 @@
         function updatePrices() {
             const now = Date.now();
             lastPriceUpdate = now;
+            
+            // Update master activity
+            database.ref('master').update({
+                lastActive: now
+            });
             
             const newPrices = {};
             for (const coin in coins) {
@@ -585,7 +605,7 @@
         function updatePlayerData() {
             const totalValue = calculateTotalValue();
             
-            database.ref('players/' + playerId).set({
+            const playerData = {
                 name: playerName,
                 balance: balance,
                 coins: {
@@ -596,7 +616,13 @@
                 },
                 totalValue: totalValue,
                 lastActive: Date.now()
-            })
+            };
+            
+            if (isMaster) {
+                playerData.isMaster = true;
+            }
+            
+            database.ref('players/' + playerId).set(playerData)
             .then(() => console.log("Данные игрока обновлены"))
             .catch(error => console.error("Ошибка обновления данных игрока:", error));
             
@@ -843,6 +869,9 @@
                 localStorage.removeItem('playerNameSet');
                 if (priceUpdateInterval) clearInterval(priceUpdateInterval);
                 database.ref('players/' + playerId).remove();
+                if (isMaster) {
+                    database.ref('master').remove();
+                }
                 location.reload();
             }
         }
