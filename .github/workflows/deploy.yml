@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ['main']
+    branches: [main]
 
 permissions:
   contents: write
@@ -12,28 +12,40 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: 18
+          cache: 'npm'
 
       - name: Create Firebase config
         run: |
-          mkdir -p js
-          echo "const firebaseConfig = ${{ secrets.FIREBASE_CONFIG }};" > js/firebase-config.js
-          echo "export default firebaseConfig;" >> js/firebase-config.js
+          mkdir -p ./js
+          echo "const firebaseConfig = ${{ secrets.FIREBASE_CONFIG }};" > ./js/firebase-config.js
+          echo "export default firebaseConfig;" >> ./js/firebase-config.js
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build (if needed)
+        run: npm run build --if-present
 
       - name: Configure Pages
         uses: actions/configure-pages@v3
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
         with:
-          path: '.'
+          path: './'
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v2
