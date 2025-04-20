@@ -193,6 +193,7 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -200,13 +201,13 @@
     <script>
         // Firebase configuration (ЗАМЕНИТЕ НА СВОЙ!)
         const firebaseConfig = {
-            apiKey: "AIzaSyBMM2ZbjhvGitBPja9Uw7XM9neAbllt7fM",
-            authDomain: "ripcripta.firebaseapp.com",
-            databaseURL: "https://ripcripta-default-rtdb.firebaseio.com",
-            projectId: "ripcripta",
-            storageBucket: "ripcripta.firebasestorage.app",
-            messagingSenderId: "1874763426471",
-            appId: "1:874763426471:web:28ddfe63b94c2d6a0c9982"
+            apiKey: "AIzaSyDzZQJzQJzQJzQJzQJzQJzQJzQJzQJzQJ",
+            authDomain: "ripcripta-multiplayer.firebaseapp.com",
+            databaseURL: "https://ripcripta-multiplayer-default-rtdb.firebaseio.com",
+            projectId: "ripcripta-multiplayer",
+            storageBucket: "ripcripta-multiplayer.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdefghijklmnopqrstuv"
         };
 
         // Initialize Firebase
@@ -318,6 +319,11 @@
                     saveGame();
                 }
             }, 1000);
+
+            // Start price updates
+            if (playerId === Object.keys(players)[0]) { // Only first player updates prices
+                setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+            }
         }
 
         // Setup Firebase listeners
@@ -342,11 +348,6 @@
                     
                     updatePriceDisplays();
                     priceChart.update();
-                    
-                    if (prices.event) {
-                        history.unshift(prices.event);
-                        updateHistory();
-                    }
                 }
             });
             
@@ -354,6 +355,11 @@
             database.ref('players').on('value', (snapshot) => {
                 const players = snapshot.val() || {};
                 document.getElementById('playersOnline').innerText = `Игроков онлайн: ${Object.keys(players).length}`;
+                
+                // If no price updates in 10 seconds, take over
+                if (Date.now() - lastPriceUpdate > 10000 && playerId === Object.keys(players)[0]) {
+                    updatePrices();
+                }
             });
             
             // Register player
@@ -361,6 +367,50 @@
             
             // Update player activity every minute
             setInterval(updatePlayerData, 60000);
+        }
+
+        // Update prices function
+        function updatePrices() {
+            const now = Date.now();
+            lastPriceUpdate = now;
+            
+            const newPrices = {};
+            for (const coin in coins) {
+                const change = (Math.random() - 0.5) * (VOLATILITY_BASE / 50);
+                coins[coin].price = Math.max(
+                    coins[coin].minPrice,
+                    Math.min(MAX_PRICE, coins[coin].price * (1 + change))
+                );
+                newPrices[coin] = {
+                    price: coins[coin].price,
+                    timestamp: now
+                };
+            }
+            
+            // 5% chance for random event
+            if (Math.random() < 0.05) {
+                triggerRandomEvent(newPrices);
+            }
+            
+            database.ref('prices').set(newPrices);
+        }
+
+        // Random market event
+        function triggerRandomEvent(newPrices) {
+            const coinNames = Object.keys(coins);
+            const randomCoin = coinNames[Math.floor(Math.random() * coinNames.length)];
+            const eventTypes = ['crash', 'boom'];
+            const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+            
+            let multiplier = eventType === 'crash' ? 0.7 : 1.5; // -30% or +50%
+            newPrices[randomCoin].price = Math.max(
+                coins[randomCoin].minPrice,
+                Math.min(MAX_PRICE, newPrices[randomCoin].price * multiplier)
+            );
+            
+            newPrices.event = eventType === 'crash' 
+                ? `⚡ Крах ${randomCoin}! Цена упала на 30%` 
+                : `🚀 Бум ${randomCoin}! Цена выросла на 50%`;
         }
 
         // Update player data in Firebase
