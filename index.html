@@ -582,7 +582,7 @@
             // Listen for player count
             database.ref('players').on('value', (snapshot) => {
                 const players = snapshot.val() || {};
-                document.getElementById('playersOnline').innerText = `Игроков онлайн: ${Object.keys(players).length}`;
+                document.getElementById('playersOnline').innerText = `Игроков: ${Object.keys(players).length}`;
             });
             
             // Register player
@@ -920,3 +920,4 @@
     </script>
 </body>
 </html>
+а вот мой же гитхаб открытый и все могут использовать мой html и будут хранить там данные
