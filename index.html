@@ -41,17 +41,12 @@
         }
 
         @keyframes moveBackground {
-            0% {
-                background-position: 0% 0%, 50% 50%, 100% 100%;
-            }
-            50% {
-                background-position: 100% 100%, 0% 0%, 50% 50%;
-            }
-            100% {
-                background-position: 0% 0%, 50% 50%, 100% 100%;
-            }
+            0% { background-position: 0% 0%, 50% 50%, 100% 100%; }
+            50% { background-position: 100% 100%, 0% 0%, 50% 50%; }
+            100% { background-position: 0% 0%, 50% 50%, 100% 100%; }
         }
 
+        /* Остальные стили остаются без изменений */
         canvas {
             width: 100%;
             height: 400px;
@@ -322,32 +317,31 @@
         <button id="close-modal">Закрыть</button>
     </div>
 
+    <!-- Подключаем Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Конфиг Firebase будет вставлен автоматически при деплое -->
+    <script type="module" src="js/firebase-config.js"></script>
+    
+    <!-- Основной код игры -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBMM2ZbjhvGitBPja9Uw7XM9neAbllt7fM",
-            authDomain: "ripcripta.firebaseapp.com",
-            databaseURL: "https://ripcripta-default-rtdb.firebaseio.com",
-            projectId: "ripcripta",
-            storageBucket: "ripcripta.firebasestorage.app",
-            messagingSenderId: "874763426471",
-            appId: "1:874763426471:web:28ddfe63b94c2d6a0c9982"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        // Инициализация Firebase (вызывается из firebase-config.js)
+        let database;
+        function initFirebase(config) {
+            firebase.initializeApp(config);
+            database = firebase.database();
+            console.log("Firebase инициализирован");
+            initGame();
+        }
 
         // Game constants
         const MAX_PRICE = 100000;
         const COMMISSION = 0.05;
         const VOLATILITY_BASE = 100;
         const BANKRUPTCY_THRESHOLD = 100;
-        const PRICE_UPDATE_INTERVAL = 10000; // 10 секунд
+        const PRICE_UPDATE_INTERVAL = 10000;
 
         // Game state
         let balance = 10000;
@@ -914,9 +908,6 @@
                 location.reload();
             }
         }
-
-        // Start the game
-        initGame();
     </script>
 </body>
 </html>
