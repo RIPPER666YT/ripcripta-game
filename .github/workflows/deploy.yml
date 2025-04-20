@@ -12,40 +12,37 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # Use quotes for version to avoid issues
-          cache: 'npm'
+          node-version: '18'
 
       - name: Create Firebase config
         run: |
-          mkdir -p ./js
-          echo "const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);" > ./js/firebase-config.js
-          echo "export default firebaseConfig;" >> ./js/firebase-config.js
+          mkdir -p js
+          echo "const firebaseConfig = ${{ secrets.FIREBASE_CONFIG }};" > js/firebase-config.js
+          echo "export default firebaseConfig;" >> js/firebase-config.js
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install firebase @firebase/app @firebase/database
 
-      - name: Build (if needed)
-        run: npm run build --if-present
+      - name: Build project
+        run: |
+          npm run build --if-present
 
-      - name: Configure Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v3
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: './'  # Ensure this path is correct based on your project structure
+          path: '.'
 
       - name: Deploy to GitHub Pages
-        id: deployment
         uses: actions/deploy-pages@v2
