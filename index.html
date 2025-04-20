@@ -26,20 +26,26 @@
             color: #ffaa00;
         }
         #container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        #game-section, #leaderboard-section {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 1px solid #ff5555;
+            border-radius: 5px;
         }
         #history {
             color: #ff8888;
-            margin-top: 20px;
             text-align: left;
-            max-width: 600px;
-            overflow-y: auto;
             max-height: 300px;
-            border: 1px solid #ff5555;
+            overflow-y: auto;
             padding: 10px;
             background-color: rgba(255, 0, 0, 0.05);
-            margin: 20px auto;
+            margin: 10px 0;
         }
         #stats {
             margin-top: 20px;
@@ -47,7 +53,6 @@
             color: #ff8888;
             text-align: left;
             padding: 10px;
-            border: 1px solid #ff5555;
             background-color: rgba(255, 0, 0, 0.05);
         }
         .button-container {
@@ -100,7 +105,34 @@
             border: 1px solid #ff5555;
             border-radius: 5px;
         }
+        #leaderboard {
+            max-height: 500px;
+            overflow-y: auto;
+            text-align: left;
+            margin-top: 10px;
+        }
+        .player-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            padding: 8px;
+            border-bottom: 1px solid #333;
+        }
+        .player-row.header {
+            font-weight: bold;
+            background: rgba(255, 85, 85, 0.2);
+        }
+        #search-player {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #222;
+            border: 1px solid #ff5555;
+            color: white;
+        }
         @media (max-width: 768px) {
+            #container {
+                grid-template-columns: 1fr;
+            }
             .button-container {
                 grid-template-columns: 1fr;
             }
@@ -110,32 +142,31 @@
 <body>
     <div id="playersOnline">Игроков онлайн: 0</div>
     <div id="container">
-        <h1>RIPCRIPTA MULTIPLAYER</h1>
-        <div id="balance">Баланс: 10000 рублей</div>
-        <div id="bankruptcyWarning">ВНИМАНИЕ: Ваш баланс критически низок!</div>
-        
-        <canvas id="priceChart"></canvas>
-        
-        <div class="price-display" style="border-left-color: red;" id="currentPrice">RIPCOIN: 1000 рублей</div>
-        <div class="price-display" style="border-left-color: green;" id="currentNPrice">NCOIN: 500 рублей</div>
-        <div class="price-display" style="border-left-color: blue;" id="currentFPrice">FCOIN: 300 рублей</div>
-        <div class="price-display" style="border-left-color: purple;" id="currentTPrice">TWITCHCOIN: 200 рублей</div>
-        
-        <div class="button-container">
-            <button onclick="buyCoin('RIPCOIN')" style="border-color: red;">Купить RIPCOIN</button>
-            <button onclick="sellCoin('RIPCOIN')" style="border-color: red;">Продать RIPCOIN</button>
-            <button onclick="buyCoin('NCOIN')" style="border-color: green;">Купить NCOIN</button>
-            <button onclick="sellCoin('NCOIN')" style="border-color: green;">Продать NCOIN</button>
-            <button onclick="buyCoin('FCOIN')" style="border-color: blue;">Купить FCOIN</button>
-            <button onclick="sellCoin('FCOIN')" style="border-color: blue;">Продать FCOIN</button>
-            <button onclick="buyCoin('TWITCHCOIN')" style="border-color: purple;">Купить TWITCHCOIN</button>
-            <button onclick="sellCoin('TWITCHCOIN')" style="border-color: purple;">Продать TWITCHCOIN</button>
-        </div>
-        
-        <button id="resetBtn" onclick="resetGame()">Начать заново</button>
-        
-        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
-            <div id="history"><h3>История операций</h3></div>
+        <div id="game-section">
+            <h1>RIPCRIPTA MULTIPLAYER</h1>
+            <div id="balance">Баланс: 10000 рублей</div>
+            <div id="bankruptcyWarning">ВНИМАНИЕ: Ваш баланс критически низок!</div>
+            
+            <canvas id="priceChart"></canvas>
+            
+            <div class="price-display" style="border-left-color: red;" id="currentPrice">RIPCOIN: 1000 рублей</div>
+            <div class="price-display" style="border-left-color: green;" id="currentNPrice">NCOIN: 500 рублей</div>
+            <div class="price-display" style="border-left-color: blue;" id="currentFPrice">FCOIN: 300 рублей</div>
+            <div class="price-display" style="border-left-color: purple;" id="currentTPrice">TWITCHCOIN: 200 рублей</div>
+            
+            <div class="button-container">
+                <button onclick="buyCoin('RIPCOIN')" style="border-color: red;">Купить RIPCOIN</button>
+                <button onclick="sellCoin('RIPCOIN')" style="border-color: red;">Продать RIPCOIN</button>
+                <button onclick="buyCoin('NCOIN')" style="border-color: green;">Купить NCOIN</button>
+                <button onclick="sellCoin('NCOIN')" style="border-color: green;">Продать NCOIN</button>
+                <button onclick="buyCoin('FCOIN')" style="border-color: blue;">Купить FCOIN</button>
+                <button onclick="sellCoin('FCOIN')" style="border-color: blue;">Продать FCOIN</button>
+                <button onclick="buyCoin('TWITCHCOIN')" style="border-color: purple;">Купить TWITCHCOIN</button>
+                <button onclick="sellCoin('TWITCHCOIN')" style="border-color: purple;">Продать TWITCHCOIN</button>
+            </div>
+            
+            <button id="resetBtn" onclick="resetGame()">Начать заново</button>
+            
             <div id="stats">
                 <h3>Ваши активы</h3>
                 <p id="ripcoinStats">RIPCOIN: 0 (0 рублей)</p>
@@ -144,16 +175,30 @@
                 <p id="tcoinStats">TWITCHCOIN: 0 (0 рублей)</p>
                 <p id="totalValue">Общая стоимость: 0 рублей</p>
             </div>
+            
+            <div id="history"><h3>История операций</h3></div>
+        </div>
+
+        <div id="leaderboard-section">
+            <h2>Топ игроков</h2>
+            <input type="text" id="search-player" placeholder="Поиск по имени" oninput="searchPlayer()">
+            <div id="leaderboard">
+                <div class="player-row header">
+                    <div>Место</div>
+                    <div>Имя</div>
+                    <div>Капитал</div>
+                </div>
+                <!-- Сюда будет загружаться топ -->
+            </div>
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
-        // Firebase configuration
+        // Firebase configuration (ЗАМЕНИТЕ НА СВОЙ!)
         const firebaseConfig = {
             apiKey: "AIzaSyBMM2ZbjhvGitBPja9Uw7XM9neAbllt7fM",
             authDomain: "ripcripta.firebaseapp.com",
@@ -179,6 +224,7 @@
         let balance = 10000;
         let lastTradeTime = 0;
         let playerId = Math.random().toString(36).substr(2, 9);
+        let playerName = "Игрок_" + Math.floor(Math.random() * 1000);
         let lastPriceUpdate = 0;
         
         const coins = {
@@ -245,7 +291,36 @@
             }
         });
 
-        // Firebase listeners
+        // Initialize game
+        function initGame() {
+            // Load saved data
+            const savedData = JSON.parse(localStorage.getItem('ripcriptaData'));
+            if (savedData) {
+                balance = savedData.balance || balance;
+                playerName = savedData.playerName || playerName;
+                for (const coin in savedData.coins) {
+                    if (coins[coin]) {
+                        coins[coin].owned = savedData.coins[coin].owned || 0;
+                    }
+                }
+                history.push(...(savedData.history || []));
+            }
+            
+            setupFirebaseListeners();
+            updateUI();
+            updateLeaderboard();
+            
+            // Set player name
+            setTimeout(() => {
+                const name = prompt("Введите ваше имя для таблицы лидеров:", playerName);
+                if (name && name.trim() !== "") {
+                    playerName = name.trim().substring(0, 20);
+                    saveGame();
+                }
+            }, 1000);
+        }
+
+        // Setup Firebase listeners
         function setupFirebaseListeners() {
             // Listen for price updates
             database.ref('prices').on('value', (snapshot) => {
@@ -256,7 +331,6 @@
                             coins[coin].price = prices[coin].price;
                             priceData[coin].push(prices[coin].price);
                             
-                            // Keep only last 100 price points
                             if (priceData[coin].length > 100) {
                                 priceData[coin].shift();
                             }
@@ -269,7 +343,6 @@
                     updatePriceDisplays();
                     priceChart.update();
                     
-                    // Add to history if it's a market event
                     if (prices.event) {
                         history.unshift(prices.event);
                         updateHistory();
@@ -284,44 +357,116 @@
             });
             
             // Register player
+            updatePlayerData();
+            
+            // Update player activity every minute
+            setInterval(updatePlayerData, 60000);
+        }
+
+        // Update player data in Firebase
+        function updatePlayerData() {
+            const totalValue = calculateTotalValue();
+            
             database.ref('players/' + playerId).set({
+                name: playerName,
+                balance: balance,
+                coins: {
+                    RIPCOIN: coins.RIPCOIN.owned,
+                    NCOIN: coins.NCOIN.owned,
+                    FCOIN: coins.FCOIN.owned,
+                    TWITCHCOIN: coins.TWITCHCOIN.owned
+                },
+                totalValue: totalValue,
                 lastActive: Date.now()
             });
             
-            // Update player activity every minute
-            setInterval(() => {
-                database.ref('players/' + playerId).update({
-                    lastActive: Date.now()
-                });
-            }, 60000);
+            updateLeaderboard();
         }
 
-        // Initialize game
-        function initGame() {
-            // Load saved data
-            const savedData = JSON.parse(localStorage.getItem('ripcriptaData'));
-            if (savedData) {
-                balance = savedData.balance || balance;
-                for (const coin in savedData.coins) {
-                    if (coins[coin]) {
-                        coins[coin].owned = savedData.coins[coin].owned || 0;
-                    }
-                }
-                history.push(...(savedData.history || []));
-            }
-            
-            setupFirebaseListeners();
-            updateUI();
-            
-            // Remove inactive players (15 minutes threshold)
+        // Calculate total player value
+        function calculateTotalValue() {
+            return Object.values(coins).reduce(
+                (sum, coin) => sum + (coin.owned * coin.price), balance
+            );
+        }
+
+        // Update leaderboard
+        function updateLeaderboard() {
             database.ref('players').once('value').then((snapshot) => {
                 const players = snapshot.val() || {};
-                const now = Date.now();
+                const playersArray = [];
+                
                 for (const id in players) {
-                    if (now - players[id].lastActive > 900000) {
-                        database.ref('players/' + id).remove();
+                    if (players[id].totalValue) {
+                        playersArray.push({
+                            id: id,
+                            name: players[id].name || "Аноним",
+                            totalValue: players[id].totalValue,
+                            isYou: id === playerId
+                        });
                     }
                 }
+                
+                // Sort by total value (descending)
+                playersArray.sort((a, b) => b.totalValue - a.totalValue);
+                
+                // Display top 100 players
+                displayLeaderboard(playersArray);
+            });
+        }
+
+        // Display leaderboard
+        function displayLeaderboard(players) {
+            const leaderboard = document.getElementById('leaderboard');
+            let html = `
+                <div class="player-row header">
+                    <div>Место</div>
+                    <div>Имя</div>
+                    <div>Капитал</div>
+                </div>
+            `;
+            
+            players.slice(0, 100).forEach((player, index) => {
+                html += `
+                    <div class="player-row" style="${player.isYou ? 'background: rgba(255, 215, 0, 0.2);' : ''}">
+                        <div>${index + 1}</div>
+                        <div>${player.name}</div>
+                        <div>${player.totalValue.toFixed(2)} ₽</div>
+                    </div>
+                `;
+            });
+            
+            leaderboard.innerHTML = html;
+        }
+
+        // Search player by name
+        function searchPlayer() {
+            const searchTerm = document.getElementById('search-player').value.toLowerCase();
+            if (!searchTerm) {
+                updateLeaderboard();
+                return;
+            }
+            
+            database.ref('players').once('value').then((snapshot) => {
+                const players = snapshot.val() || {};
+                const playersArray = [];
+                
+                for (const id in players) {
+                    if (players[id].name && players[id].name.toLowerCase().includes(searchTerm)) {
+                        playersArray.push({
+                            id: id,
+                            name: players[id].name,
+                            totalValue: players[id].totalValue || 0,
+                            isYou: id === playerId
+                        });
+                    }
+                }
+                
+                // Sort by total value (descending)
+                playersArray.sort((a, b) => b.totalValue - a.totalValue);
+                
+                // Display search results
+                displayLeaderboard(playersArray);
             });
         }
 
@@ -329,15 +474,19 @@
         function saveGame() {
             const dataToSave = {
                 balance,
+                playerName,
                 coins: {
                     RIPCOIN: { owned: coins.RIPCOIN.owned },
                     NCOIN: { owned: coins.NCOIN.owned },
                     FCOIN: { owned: coins.FCOIN.owned },
                     TWITCHCOIN: { owned: coins.TWITCHCOIN.owned }
                 },
-                history: history.slice(-50) // Save last 50 history items
+                history: history.slice(-50)
             };
             localStorage.setItem('ripcriptaData', JSON.stringify(dataToSave));
+            
+            // Update player data in Firebase
+            updatePlayerData();
         }
 
         // Trade functions
@@ -414,9 +563,7 @@
             document.getElementById('tcoinStats').innerText = 
                 `TWITCHCOIN: ${coins.TWITCHCOIN.owned.toFixed(2)} (${(coins.TWITCHCOIN.owned * coins.TWITCHCOIN.price).toFixed(2)} рублей)`;
             
-            const totalValue = Object.values(coins).reduce(
-                (sum, coin) => sum + (coin.owned * coin.price), balance
-            );
+            const totalValue = calculateTotalValue();
             document.getElementById('totalValue').innerText = 
                 `Общая стоимость: ${totalValue.toFixed(2)} рублей`;
             
