@@ -140,9 +140,17 @@
             right: 15px;
             background: none;
             border: none;
-            color: #ff5555;
             cursor: pointer;
-            font-size: 20px;
+            width: 24px;
+            height: 24px;
+        }
+        #info-btn svg {
+            fill: #ff5555;
+            transition: all 0.3s;
+        }
+        #info-btn:hover svg {
+            fill: #ff0000;
+            transform: scale(1.1);
         }
         #info-modal {
             display: none;
@@ -204,7 +212,11 @@
     <div id="playersOnline">Игроков онлайн: 0</div>
     <div id="container">
         <div id="game-section">
-            <button id="info-btn" title="Информация о игре">ℹ️</button>
+            <button id="info-btn" title="Информация о игре">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                </svg>
+            </button>
             <h1>RIPCRIPTA MULTIPLAYER</h1>
             <div id="balance">Баланс: 10000 рублей</div>
             <div id="bankruptcyWarning">ВНИМАНИЕ: Ваш баланс критически низок!</div>
@@ -279,12 +291,12 @@
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBMM2ZbjhvGitBPja9Uw7XM9neAbllt7fM",
-        authDomain: "ripcripta.firebaseapp.com",
-        databaseURL: "https://ripcripta-default-rtdb.firebaseio.com",
-        projectId: "ripcripta",
-        storageBucket: "ripcripta.firebasestorage.app",
-        messagingSenderId: "874763426471",
-        appId: "1:874763426471:web:28ddfe63b94c2d6a0c9982",
+            authDomain: "ripcripta.firebaseapp.com",
+            databaseURL: "https://ripcripta-default-rtdb.firebaseio.com",
+            projectId: "ripcripta",
+            storageBucket: "ripcripta.firebasestorage.app",
+            messagingSenderId: "874763426471",
+            appId: "1:874763426471:web:28ddfe63b94c2d6a0c9982"
         };
 
         // Initialize Firebase
@@ -460,6 +472,7 @@
             isMaster = true;
             console.log("Стал мастером, обновляю цены");
             updatePrices(); // Immediate update
+            if (priceUpdateInterval) clearInterval(priceUpdateInterval);
             priceUpdateInterval = setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
         }
 
