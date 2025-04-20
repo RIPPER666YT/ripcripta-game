@@ -23,13 +23,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: '18'  # Use quotes for version to avoid issues
           cache: 'npm'
 
       - name: Create Firebase config
         run: |
           mkdir -p ./js
-          echo "const firebaseConfig = ${{ secrets.FIREBASE_CONFIG }};" > ./js/firebase-config.js
+          echo "const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);" > ./js/firebase-config.js
           echo "export default firebaseConfig;" >> ./js/firebase-config.js
 
       - name: Install dependencies
@@ -44,7 +44,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: './'
+          path: './'  # Ensure this path is correct based on your project structure
 
       - name: Deploy to GitHub Pages
         id: deployment
